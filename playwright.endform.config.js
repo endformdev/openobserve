@@ -1,14 +1,18 @@
 const path = require('path');
 const original = require('./tests/ui-testing/playwright.config.js');
+const { selection } = require('./scripts/endform-selection.cjs');
 
 const suiteDir = path.join(__dirname, 'tests/ui-testing');
 
 module.exports = {
   ...original,
-  projects: original.projects.map(project => ({
+  projects: original.projects.flatMap(project => [false, true].map(fileMode => ({
     ...project,
-    ...(['Reports', 'RUM', 'Alerts'].includes(process.env.ENDFORM_TEST_GROUP) && { fullyParallel: false }),
-  })),
+    name: `${project.name}-${fileMode ? 'files' : 'tests'}`,
+    fullyParallel: !fileMode,
+    testMatch: selection().filter(file => file.fileMode === fileMode).map(file =>
+      new RegExp(`^${file.filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)),
+  }))),
   testDir: path.resolve(suiteDir, original.testDir),
   outputDir: path.resolve(suiteDir, original.outputDir),
   globalSetup: path.resolve(suiteDir, original.globalSetup),

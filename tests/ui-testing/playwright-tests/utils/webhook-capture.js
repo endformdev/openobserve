@@ -22,7 +22,7 @@ class WebhookCapture {
      * @returns {Promise<number>} The port the server is listening on.
      */
     async start() {
-        if (process.env.ENDFORM === 'true' && process.env.ENDFORM_TEST_GROUP === 'Alerts') {
+        if (process.env.ENDFORM === 'true') {
             const { request } = require('@playwright/test');
             this.remoteContext = await request.newContext({ baseURL: 'http://localhost:9000' });
             const response = await this.remoteContext.post('/captures');

@@ -7,7 +7,7 @@ const { ingestTraces } = require('./playwright-tests/utils/trace-ingestion.js');
 const { ingestRumErrors } = require('./playwright-tests/utils/rum-error-ingestion.js');
 
 async function globalSetup() {
-  if (process.env.ENDFORM_TEST_GROUP === 'RUM') {
+  if (process.env.ENDFORM_PHASE === 'main' && !fs.existsSync(path.join(__dirname, 'fixtures/rum/npm-app/dist/bundle.js'))) {
     const fixtureDir = path.join(__dirname, 'fixtures/rum/npm-app');
     execFileSync('npm', ['ci'], { cwd: fixtureDir, stdio: 'inherit', timeout: 300000 });
     execFileSync('npm', ['run', 'build'], { cwd: fixtureDir, stdio: 'inherit', timeout: 120000 });

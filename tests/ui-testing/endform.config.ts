@@ -3,10 +3,10 @@ import { defineEndformConfig } from 'endform';
 
 export default defineEndformConfig({
   // Worker-hosted RUM fixture servers must keep their own loopback ports.
-  proxyNetworkPorts: [5080, 8025, ...(process.env.ENDFORM_TEST_GROUP === 'Alerts' ? [9000] : [])],
+  proxyNetworkPorts: [5080, 8025, 9000],
   concurrentTestLimits: [{
     scope: 'within-suite-run',
-    limit: Number(process.env.ENDFORM_TEST_CONCURRENCY || 5),
+    limit: process.env.ENDFORM_PHASE === 'shared' ? 1 : Number(process.env.ENDFORM_TEST_CONCURRENCY || 10),
   }],
   additionalFiles: [
     '../test-data/70_fields.json',
@@ -36,7 +36,7 @@ export default defineEndformConfig({
     'fixtures/rum/npm-app/package.json',
     'fixtures/rum/npm-app/package-lock.json',
     'fixtures/rum/npm-app/src/main.js',
-    ...(process.env.ENDFORM_TEST_GROUP === 'RUM' ? [
+    ...(process.env.ENDFORM_PHASE === 'main' ? [
       'fixtures/rum/npm-app/dist/bundle.js',
       'fixtures/rum/npm-app/node_modules/@openobserve/browser-rum/package.json',
     ] : []),
