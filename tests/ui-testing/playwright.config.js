@@ -9,6 +9,14 @@ try {
   console.warn('⚠️  dotenv not available, using system environment variables');
 }
 
+const baseURL = process.env.BASE_URL || process.env.ZO_BASE_URL || 'http://localhost:5080';
+process.env.ZO_BASE_URL = baseURL;
+
+if (process.env.ENDFORM === 'true') {
+  // Runtime fixture paths depend on this directory even when a parent config collects the suite.
+  process.chdir(__dirname);
+}
+
 // Check if essential environment variables are set
 if (!process.env.ZO_BASE_URL || !process.env.ZO_ROOT_USER_EMAIL || !process.env.ZO_ROOT_USER_PASSWORD) {
   console.warn('⚠️  Essential environment variables not found. Make sure to set ZO_BASE_URL, ZO_ROOT_USER_EMAIL, and ZO_ROOT_USER_PASSWORD');
@@ -25,7 +33,9 @@ module.exports = defineConfig({
   /* Exclude archived tests from all test runs */
   testIgnore: ['**/test-archives/**', '**/*_old.js'],
   /* Global setup and teardown */
-  globalSetup: './playwright-tests/utils/global-setup.js',
+  globalSetup: process.env.ENDFORM === 'true'
+    ? './endform-global-setup.js'
+    : './playwright-tests/utils/global-setup.js',
   globalTeardown: './playwright-tests/utils/global-teardown.js',
   /* Run tests in files in parallel */
   fullyParallel: true,
@@ -50,10 +60,9 @@ module.exports = defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env["ZO_BASE_URL"],
+    baseURL,
 
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
 
     /* Navigation and action timeouts for CI stability */
     navigationTimeout: process.env.CI ? 90000 : 30000,

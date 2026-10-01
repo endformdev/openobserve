@@ -6,6 +6,7 @@
 
 # ---------- node / web ----------
 node_modules/
+/node_modules
 .vite/
 .vitest/
 /web/dist

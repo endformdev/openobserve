@@ -363,6 +363,7 @@ jobs:
     permissions:
       contents: read
       actions: read
+      id-token: write
     # container:
     #   image: mcr.microsoft.com/playwright:v1.50.0-jammy
     #   options: --user root
@@ -497,122 +498,30 @@ jobs:
           done
           echo "::warning::DL relay did not start; the fan-out case will skip"
 
-      - name: Cache Playwright browser
-        id: playwright-cache
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('tests/ui-testing/package-lock.json') }}
+      - name: Install UI test dependencies
+        working-directory: tests/ui-testing
+        run: npm ci
 
-      - name: Install dependencies and run ui-tests
+      - name: Link the suite dependencies
+        run: ln -s tests/ui-testing/node_modules node_modules
+
+      - name: Run UI tests on Endform
+        env:
+          ENDFORM_TEST_CONCURRENCY: ${{ matrix.workers || 5 }}
         run: |
-          touch .env
-          echo "ZO_ROOT_USER_EMAIL=${ZO_ROOT_USER_EMAIL}" >> .env
-          echo "ZO_ROOT_USER_PASSWORD=${ZO_ROOT_USER_PASSWORD}" >> .env
-          echo "ZO_BASE_URL=${ZO_BASE_URL}" >> .env
-          echo "WS_ZO_BASE_URL=${WS_ZO_BASE_URL}" >> .env
-          echo "ZO_BASE_URL_SC=${ZO_BASE_URL_SC}" >> .env
-          echo "ZO_BASE_URL_SC_UI=${ZO_BASE_URL_SC_UI}" >> .env
-          echo "INGESTION_URL=${INGESTION_URL}" >> .env
-          echo "ORGNAME=${ORGNAME}" >> .env
-          echo "ZO_SMTP_ENABLED=${ZO_SMTP_ENABLED}" >> .env
-          echo "MAILPIT_URL=${MAILPIT_URL}" >> .env
-          echo "DL_ADDRESS=${DL_ADDRESS}" >> .env
-          echo "DL_MEMBERS=${DL_MEMBERS}" >> .env
-          mv .env tests/ui-testing
-          cd tests/ui-testing && npm ci
-
-          # Install apt system dependencies (always needed).
-          # azure.archive.ubuntu.com intermittently times out fetching font/lib
-          # packages, which makes `install-deps` exit 100 and fails the whole job.
-          # Give apt its own per-fetch retries and wrap the call in a backoff loop.
-          echo 'Acquire::Retries "5";' | sudo tee /etc/apt/apt.conf.d/99retries >/dev/null
-          for attempt in 1 2 3; do
-            if npx playwright install-deps chromium; then
-              echo "install-deps succeeded on attempt ${attempt}"
-              break
-            fi
-            if [ "${attempt}" = 3 ]; then
-              echo "::error::playwright install-deps chromium failed after 3 attempts"
-              exit 1
-            fi
-            echo "install-deps attempt ${attempt} failed; retrying in $((attempt * 20))s"
-            sleep $((attempt * 20))
-          done
-
-          # Get revision from playwright's own metadata
-          CHROMIUM_REV=$(node -pe "
-            require('./node_modules/playwright-core/browsers.json')
-              .browsers.find(b => b.name === 'chromium').revision
-          ")
-
-          install_browser() {
-            local NAME="$1"
-            local BINARY="$2"
-            local ZIP_PATH="$3"
-            local DIR="$HOME/.cache/ms-playwright/${NAME}-${CHROMIUM_REV}"
-            if [ -f "${DIR}/INSTALLATION_COMPLETE" ]; then
-              echo "${NAME} already installed (cache hit)"; return 0
-            fi
-            rm -rf "${DIR}"
-            echo "Cache miss — downloading ${NAME} r${CHROMIUM_REV} via curl + system unzip"
-            curl -fL --progress-bar \
-              "https://cdn.playwright.dev/dbazure/download/playwright/builds/${ZIP_PATH}" \
-              -o "/tmp/${NAME}.zip"
-            mkdir -p "${DIR}"
-            unzip -q "/tmp/${NAME}.zip" -d "${DIR}"
-            rm -f "/tmp/${NAME}.zip"
-            find "${DIR}" -name "${BINARY}" -type f -exec chmod 755 {} \;
-            find "${DIR}" -name 'chrome_sandbox' -type f -exec chmod 4755 {} \; 2>/dev/null || true
-            touch "${DIR}/INSTALLATION_COMPLETE"
-            echo "${NAME} installed: $(ls ${DIR}/)"
-          }
-
-          install_browser "chromium" "chrome" \
-            "chromium/${CHROMIUM_REV}/chromium-linux.zip"
-          install_browser "chromium_headless_shell" "headless_shell" \
-            "chromium/${CHROMIUM_REV}/chromium-headless-shell-linux.zip"
-
-          # ffmpeg is required for video recording (video: retain-on-failure in playwright.config.js)
-          # The custom install_browser uses CHROMIUM_REV which doesn't match ffmpeg's own revision,
-          # so use the local playwright binary (pinned via package-lock.json) to install ffmpeg only.
-          ./node_modules/.bin/playwright install ffmpeg
-
-          # Get list of files to run using join function
           FILE_LIST="${{ join(matrix.run_files, ' ') }}"
-          echo "DEBUG: FILE_LIST = $FILE_LIST"
-          echo "DEBUG: matrix.testfolder = ${{ matrix.testfolder }}"
-
-          if [ -n "$FILE_LIST" ]; then
-            # actual_folder (the real directory under playwright-tests/) comes straight
-            # from the matrix now — the logical->directory mapping lives in ci-matrix/ci_matrix.json.
-            ACTUAL_FOLDER="${{ matrix.actual_folder }}"
-            echo "DEBUG: ACTUAL_FOLDER = $ACTUAL_FOLDER"
-
-            # Build file paths
-            FILE_PATHS=""
-            for file in $FILE_LIST; do
-              FILE_PATH="./playwright-tests/$ACTUAL_FOLDER/$file"
-              echo "DEBUG: Will run file: $FILE_PATH"
-              FILE_PATHS="$FILE_PATHS $FILE_PATH"
-            done
-
-            # Optional per-shard worker pin. Empty keeps playwright.config.js's
-            # default; a shard whose specs contend for a shared server-side
-            # resource sets "workers": 1 in ci_matrix.json, because fullyParallel
-            # races separate spec FILES and mode:'serial' only orders tests
-            # within one file.
-            WORKERS_ARG=""
-            if [ -n "${{ matrix.workers }}" ]; then
-              WORKERS_ARG="--workers=${{ matrix.workers }}"
-              echo "DEBUG: pinning workers to ${{ matrix.workers }}"
-            fi
-
-            echo "DEBUG: Final command: npx playwright test $FILE_PATHS $WORKERS_ARG"
-            npx playwright test $FILE_PATHS $WORKERS_ARG
-          else
-            echo "No files specified to run for ${{ matrix.testfolder }} folder"
+          ACTUAL_FOLDER="${{ matrix.actual_folder }}"
+          FILE_PATHS=""
+          for file in $FILE_LIST; do
+            FILE_PATHS="$FILE_PATHS ./tests/ui-testing/playwright-tests/$ACTUAL_FOLDER/$file"
+          done
+          if [ -z "$FILE_PATHS" ]; then
+            echo "::error::No files specified for ${{ matrix.testfolder }}"
+            exit 1
           fi
+          npx endform@latest --version
+          echo "TEST_STAGE_STARTED_AT=$(date -u +%FT%TZ)"
+          npx endform@latest test --organization-id 2G1ZCj7X --config=playwright.endform.config.js $FILE_PATHS
 
       - name: Upload blob report to GitHub Actions Artifacts
         if: ${{ !cancelled() }}
