@@ -5,7 +5,7 @@ export default defineEndformConfig({
   // Worker-hosted RUM fixture servers must keep their own loopback ports.
   proxyNetworkPorts: [5080, 8025, 9000],
   concurrentTestLimits: [
-    { scope: 'within-suite-run', limit: Number(process.env.ENDFORM_TEST_CONCURRENCY || 10) },
+    { scope: 'within-suite-run', limit: Number(process.env.ENDFORM_TEST_CONCURRENCY || 40) },
     { scope: 'within-suite-run', label: 'project:chromium-rum', limit: 1 },
     { scope: 'within-suite-run', label: 'project:chromium-slo', limit: 1 },
     { scope: 'within-suite-run', label: 'project:chromium-preferences', limit: 1 },

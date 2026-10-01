@@ -350,7 +350,7 @@ jobs:
           fi
 
   ui_integration_tests:
-    timeout-minutes: 120
+    timeout-minutes: 180
     name: e2e / Endform full selection
     needs: [resolve_binary, build_binary, generate_matrix]
     if: >-
@@ -475,7 +475,7 @@ jobs:
 
       - name: Run UI tests on Endform
         env:
-          ENDFORM_TEST_CONCURRENCY: "10"
+          ENDFORM_TEST_CONCURRENCY: "40"
           ENDFORM_SELECTION_JSON: ${{ needs.generate_matrix.outputs.matrix }}
         run: |
           npx endform@latest --version
