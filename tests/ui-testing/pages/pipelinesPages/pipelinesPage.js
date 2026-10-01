@@ -258,7 +258,7 @@ export class PipelinesPage {
         this.searchStreamInput = page.getByPlaceholder('Search Stream');
         this.exploreButton = page.getByRole('button', { name: 'Explore' });
         this.timestampColumnMenu = page.locator('[data-test="o2-table-expand-1"]');
-        this.nameCell = page.getByRole('cell', { name: 'Name' });
+        this.nameCell = page.locator('[data-test="o2-table-th-name"]');
         this.streamIcon = page.getByRole("img", { name: "Stream", exact: true });
         this.outputStreamIcon = page.getByRole("img", { name: "Output Stream" });
         this.containsOption = page.getByText("Contains", { exact: true });
