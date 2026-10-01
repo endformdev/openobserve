@@ -1,11 +1,18 @@
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 const { request } = require('@playwright/test');
 const { performGlobalIngestion } = require('./playwright-tests/utils/global-setup.js');
 const { ingestTraces } = require('./playwright-tests/utils/trace-ingestion.js');
 const { ingestRumErrors } = require('./playwright-tests/utils/rum-error-ingestion.js');
 
 async function globalSetup() {
+  if (process.env.ENDFORM_TEST_GROUP === 'RUM') {
+    const fixtureDir = path.join(__dirname, 'fixtures/rum/npm-app');
+    execFileSync('npm', ['ci'], { cwd: fixtureDir, stdio: 'inherit', timeout: 300000 });
+    execFileSync('npm', ['run', 'build'], { cwd: fixtureDir, stdio: 'inherit', timeout: 120000 });
+  }
+
   const baseURL = process.env.ZO_BASE_URL;
   const email = process.env.ZO_ROOT_USER_EMAIL;
   const password = process.env.ZO_ROOT_USER_PASSWORD;

@@ -3,7 +3,7 @@ import { defineEndformConfig } from 'endform';
 
 export default defineEndformConfig({
   // Worker-hosted RUM fixture servers must keep their own loopback ports.
-  proxyNetworkPorts: [5080, 8025],
+  proxyNetworkPorts: [5080, 8025, ...(process.env.ENDFORM_TEST_GROUP === 'Alerts' ? [9000] : [])],
   concurrentTestLimits: [{
     scope: 'within-suite-run',
     limit: Number(process.env.ENDFORM_TEST_CONCURRENCY || 5),
@@ -28,13 +28,20 @@ export default defineEndformConfig({
     '../test-data/sdr_test_data.json',
     'playwright-tests/utils/auth/user.json',
     'utils/td150.json',
+    'utils/webhookDestinationImport.json',
+    'utils/webhookTemplateImport.json',
     'fixtures/rum/cdn-sample/*.html',
     'fixtures/rum/cdn-sample/*.js',
     'fixtures/rum/cdn-sample/*.css',
     'fixtures/rum/npm-app/package.json',
     'fixtures/rum/npm-app/package-lock.json',
     'fixtures/rum/npm-app/src/main.js',
+    ...(process.env.ENDFORM_TEST_GROUP === 'RUM' ? [
+      'fixtures/rum/npm-app/dist/bundle.js',
+      'fixtures/rum/npm-app/node_modules/@openobserve/browser-rum/package.json',
+    ] : []),
     'fixtures/sourcemaps/dist/main.e2efix01.js',
     'fixtures/sourcemaps/dist/main.e2efix01.js.map',
+    'fixtures/sourcemaps/manifest.json',
   ].map(file => resolve(__dirname, file)),
 });

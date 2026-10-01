@@ -505,9 +505,21 @@ jobs:
       - name: Link the suite dependencies
         run: ln -s tests/ui-testing/node_modules node_modules
 
+      - name: Start callback capture relay
+        if: matrix.testfolder == 'Alerts'
+        run: |
+          node tests/ui-testing/scripts/endform-webhook-relay.cjs > webhook-relay.log 2>&1 &
+          for i in $(seq 1 10); do
+            if curl -sf http://localhost:9000/health > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          echo "::error::Callback capture relay failed to start"
+          exit 1
+
       - name: Run UI tests on Endform
         env:
           ENDFORM_TEST_CONCURRENCY: ${{ matrix.workers || 5 }}
+          ENDFORM_TEST_GROUP: ${{ matrix.testfolder }}
           PLAYWRIGHT_BLOB_OUTPUT_NAME: report-${{ matrix.testfolder }}.zip
         run: |
           FILE_LIST="${{ join(matrix.run_files, ' ') }}"
