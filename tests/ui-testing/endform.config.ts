@@ -2,7 +2,8 @@ import { resolve } from 'node:path';
 import { defineEndformConfig } from 'endform';
 
 export default defineEndformConfig({
-  proxyNetworkHosts: ['<loopback>'],
+  // Worker-hosted RUM fixture servers must keep their own loopback ports.
+  proxyNetworkPorts: [5080, 8025],
   concurrentTestLimits: [{
     scope: 'within-suite-run',
     limit: Number(process.env.ENDFORM_TEST_CONCURRENCY || 5),

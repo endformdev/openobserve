@@ -520,6 +520,7 @@ jobs:
             exit 1
           fi
           npx endform@latest --version
+          trap 'echo "TEST_STAGE_FINISHED_AT=$(date -u +%FT%TZ)"' EXIT
           echo "TEST_STAGE_STARTED_AT=$(date -u +%FT%TZ)"
           npx endform@latest test --organization-id 2G1ZCj7X --config=playwright.endform.config.js $FILE_PATHS
 
