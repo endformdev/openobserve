@@ -3,6 +3,14 @@ const original = require('./tests/ui-testing/playwright.config.js');
 const { selection } = require('./scripts/endform-selection.cjs');
 
 const suiteDir = path.join(__dirname, 'tests/ui-testing');
+const selected = selection();
+const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const serialFilters = selected.filter(file => file.resource === 'files').flatMap(file =>
+  file.serialTitles.map(titles => {
+    const relative = path.relative(path.resolve(suiteDir, original.testDir), file.filename).split(path.sep).join('/');
+    const title = [relative, ...titles].map(escapeRegex).join(' ');
+    return new RegExp(`(?:^| )${title}(?: |$)`);
+  }));
 
 module.exports = {
   ...original,
@@ -11,8 +19,10 @@ module.exports = {
       ...project,
       name: `${project.name}-${resource}`,
       fullyParallel: resource === 'tests',
-      testMatch: selection().filter(file => file.resource === resource).map(file =>
-        new RegExp(`^${file.filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)),
+      ...(resource === 'tests' && { grepInvert: serialFilters }),
+      ...(resource === 'files' && { grep: serialFilters }),
+      testMatch: selected.filter(file => file.resource === resource).map(file =>
+        new RegExp(`^${escapeRegex(file.filename)}$`)),
     }))),
   testDir: path.resolve(suiteDir, original.testDir),
   outputDir: path.resolve(suiteDir, original.outputDir),

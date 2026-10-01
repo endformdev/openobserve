@@ -52,8 +52,15 @@ async function main() {
       process.env.ENDFORM_PHASE = phase;
       const files = selection();
       if (files.length === 0) continue;
+      if (phase === 'main') {
+        const inventory = spawnSync('./tests/ui-testing/node_modules/.bin/playwright', [
+          'test', '--config=playwright.endform.config.js', '--list',
+          '--reporter=./scripts/endform-serial-groups-reporter.cjs',
+        ], { cwd: root, env: process.env, stdio: 'inherit' });
+        if (inventory.status !== 0) throw new Error('Could not inventory the existing serial groups');
+      }
       if (phase === 'quick') await restartQuickServer();
-      console.log(`ENDFORM_PHASE_STARTED phase=${phase} files=${files.length} at=${new Date().toISOString()}`);
+      console.log(`ENDFORM_PHASE_STARTED phase=${phase} files=${new Set(files.map(file => file.filename)).size} at=${new Date().toISOString()}`);
       const result = spawnSync('npx', [
         'endform@latest', 'test', '--organization-id', '2G1ZCj7X',
         '--config=playwright.endform.config.js',
