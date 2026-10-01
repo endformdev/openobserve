@@ -350,8 +350,8 @@ jobs:
           fi
 
   ui_integration_tests:
-    timeout-minutes: 45
-    name: e2e / ${{ matrix.testfolder }}
+    timeout-minutes: 180
+    name: e2e / Endform full selection
     needs: [resolve_binary, build_binary, generate_matrix]
     if: >-
       always() &&
@@ -363,15 +363,7 @@ jobs:
     permissions:
       contents: read
       actions: read
-    # container:
-    #   image: mcr.microsoft.com/playwright:v1.50.0-jammy
-    #   options: --user root
-    strategy:
-      fail-fast: false
-      # Matrix is generated from tests/ui-testing/ci-matrix/ci_matrix.json by the
-      # generate_matrix job (the single source of truth shared with ENT). To add
-      # or move a spec, edit that JSON file — do NOT hand-edit a matrix here.
-      matrix: ${{ fromJSON(needs.generate_matrix.outputs.matrix) }}
+      id-token: write
     steps:
       - name: Kill background apt processes
         run: |
@@ -402,17 +394,7 @@ jobs:
           run-id: ${{ needs.resolve_binary.outputs.run_id }}
 
       - name: Start mail sink (Mailpit)
-        # A local SMTP server the tests can also READ. Runs as a static binary
-        # rather than a service container: these shards run on a self-hosted EKS
-        # runner where Docker-in-Docker is not guaranteed, and the app itself is
-        # already launched the same way. ~2s, and it makes ZO_SMTP_* real.
-        #
-        # Gated to the one shard that needs it — every other shard would
-        # otherwise pay a GitHub-releases download for nothing.
-        if: matrix.testfolder == 'Alerts'
         env:
-          # Pinned, not "latest": an upstream release must never change what this
-          # shard does without a commit here.
           MAILPIT_VERSION: v1.21.8
         run: |
           set +e
@@ -423,8 +405,6 @@ jobs:
             echo "::warning::Mailpit ${MAILPIT_VERSION} could not be fetched; email delivery assertions will skip"
             exit 0
           fi
-          # Loopback only — this runner is shared, and delivered alert bodies
-          # should not be readable from the rest of its network.
           ./mailpit --smtp 127.0.0.1:1025 --listen 127.0.0.1:8025 > mailpit.log 2>&1 &
           for i in $(seq 1 30); do
             curl -sf http://localhost:8025/api/v1/messages > /dev/null 2>&1 && { echo "Mailpit ready after ${i}s"; exit 0; }
@@ -433,29 +413,16 @@ jobs:
           echo "::warning::Mailpit did not start; email delivery assertions will skip"
 
       - name: Start OpenObserve
-        # Per-shard override of the workflow-level default. ZO_QUICK_MODE_ENABLED is
-        # read once at server start and is global to the process, so a shard is the
-        # smallest unit that can change it. Set via "quick_mode_enabled" in
-        # tests/ui-testing/ci-matrix/ci_matrix.json; shards that omit it get "false".
         env:
-          ZO_QUICK_MODE_ENABLED: ${{ matrix.quick_mode_enabled || 'false' }}
-          # Same per-shard rule: how far back (hours) ingestion accepts a record.
-          # The workflow default of 5 DROPS older rows while still answering 200,
-          # so a suite that seeds history (SLO measures a rolling 7-day window)
-          # would fail as "No data" with nothing in the artifacts to explain it.
-          # Set via "ingest_allowed_upto" in ci-matrix/ci_matrix.json; shards that
-          # omit it keep the workflow default.
-          ZO_INGEST_ALLOWED_UPTO: ${{ matrix.ingest_allowed_upto || env.ZO_INGEST_ALLOWED_UPTO }}
-          # Same per-shard rule: how much history one SLO backfill chunk covers.
-          # The production default (86400 = 1 day) makes a 7-day-window test SLO
-          # backfill in 7 sequential chunks under ZO_SCHEDULER_SLO_BACKFILL_CONCURRENCY=1
-          # (SLO-Measurement's shard note above) — no test here asserts on
-          # per-chunk timing or partial coverage, only on the final measured
-          # state, so a shard-only larger chunk is free wall-clock, not a
-          # behavior change. Set via "slo_backfill_chunk_secs" in
-          # ci-matrix/ci_matrix.json; shards that omit it keep the server default.
-          ZO_SLO_BACKFILL_CHUNK_SECS: ${{ matrix.slo_backfill_chunk_secs || env.ZO_SLO_BACKFILL_CHUNK_SECS }}
-        run: chmod +x ./release-ci-binary/openobserve && ./release-ci-binary/openobserve > o2.log 2>&1 &
+          ZO_QUICK_MODE_ENABLED: "false"
+          ZO_INGEST_ALLOWED_UPTO: "240"
+          ZO_SLO_BACKFILL_CHUNK_SECS: "604800"
+        run: |
+          chmod +x ./release-ci-binary/openobserve
+          ./release-ci-binary/openobserve > o2.log 2>&1 &
+          echo "$!" > openobserve.pid
+          echo "BACKEND_CPU_COUNT=$(nproc)"
+          free -m
 
       - name: Wait for start
         run: |
@@ -477,14 +444,6 @@ jobs:
           node-version: 24
 
       - name: Start distribution-list relay
-        # Mailpit is a sink: it accepts any address but stores ONE message, so it
-        # can never show what a real distribution list does. This tiny relay sits
-        # in front of it and expands the alias into per-member deliveries, the
-        # same way alerts-content-templates.spec.js stands up an HTTP receiver to
-        # capture what a webhook destination really sent.
-        #
-        # Gated to the one shard that needs it, matching the Mailpit step above.
-        if: matrix.testfolder == 'Alerts'
         run: |
           if ! command -v node > /dev/null 2>&1; then
             echo "::warning::node not on PATH; DL fan-out case will skip"
@@ -497,134 +456,66 @@ jobs:
           done
           echo "::warning::DL relay did not start; the fan-out case will skip"
 
-      - name: Cache Playwright browser
-        id: playwright-cache
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('tests/ui-testing/package-lock.json') }}
+      - name: Install UI test dependencies
+        working-directory: tests/ui-testing
+        run: npm ci
 
-      - name: Install dependencies and run ui-tests
+      - name: Link the suite dependencies
+        run: ln -s tests/ui-testing/node_modules node_modules
+
+      - name: Start callback capture relay
         run: |
-          touch .env
-          echo "ZO_ROOT_USER_EMAIL=${ZO_ROOT_USER_EMAIL}" >> .env
-          echo "ZO_ROOT_USER_PASSWORD=${ZO_ROOT_USER_PASSWORD}" >> .env
-          echo "ZO_BASE_URL=${ZO_BASE_URL}" >> .env
-          echo "WS_ZO_BASE_URL=${WS_ZO_BASE_URL}" >> .env
-          echo "ZO_BASE_URL_SC=${ZO_BASE_URL_SC}" >> .env
-          echo "ZO_BASE_URL_SC_UI=${ZO_BASE_URL_SC_UI}" >> .env
-          echo "INGESTION_URL=${INGESTION_URL}" >> .env
-          echo "ORGNAME=${ORGNAME}" >> .env
-          echo "ZO_SMTP_ENABLED=${ZO_SMTP_ENABLED}" >> .env
-          echo "MAILPIT_URL=${MAILPIT_URL}" >> .env
-          echo "DL_ADDRESS=${DL_ADDRESS}" >> .env
-          echo "DL_MEMBERS=${DL_MEMBERS}" >> .env
-          mv .env tests/ui-testing
-          cd tests/ui-testing && npm ci
-
-          # Install apt system dependencies (always needed).
-          # azure.archive.ubuntu.com intermittently times out fetching font/lib
-          # packages, which makes `install-deps` exit 100 and fails the whole job.
-          # Give apt its own per-fetch retries and wrap the call in a backoff loop.
-          echo 'Acquire::Retries "5";' | sudo tee /etc/apt/apt.conf.d/99retries >/dev/null
-          for attempt in 1 2 3; do
-            if npx playwright install-deps chromium; then
-              echo "install-deps succeeded on attempt ${attempt}"
-              break
-            fi
-            if [ "${attempt}" = 3 ]; then
-              echo "::error::playwright install-deps chromium failed after 3 attempts"
-              exit 1
-            fi
-            echo "install-deps attempt ${attempt} failed; retrying in $((attempt * 20))s"
-            sleep $((attempt * 20))
+          node tests/ui-testing/scripts/endform-webhook-relay.cjs > webhook-relay.log 2>&1 &
+          for i in $(seq 1 10); do
+            if curl -sf http://localhost:9000/health > /dev/null; then exit 0; fi
+            sleep 1
           done
+          echo "::error::Callback capture relay failed to start"
+          exit 1
 
-          # Get revision from playwright's own metadata
-          CHROMIUM_REV=$(node -pe "
-            require('./node_modules/playwright-core/browsers.json')
-              .browsers.find(b => b.name === 'chromium').revision
-          ")
-
-          install_browser() {
-            local NAME="$1"
-            local BINARY="$2"
-            local ZIP_PATH="$3"
-            local DIR="$HOME/.cache/ms-playwright/${NAME}-${CHROMIUM_REV}"
-            if [ -f "${DIR}/INSTALLATION_COMPLETE" ]; then
-              echo "${NAME} already installed (cache hit)"; return 0
-            fi
-            rm -rf "${DIR}"
-            echo "Cache miss — downloading ${NAME} r${CHROMIUM_REV} via curl + system unzip"
-            curl -fL --progress-bar \
-              "https://cdn.playwright.dev/dbazure/download/playwright/builds/${ZIP_PATH}" \
-              -o "/tmp/${NAME}.zip"
-            mkdir -p "${DIR}"
-            unzip -q "/tmp/${NAME}.zip" -d "${DIR}"
-            rm -f "/tmp/${NAME}.zip"
-            find "${DIR}" -name "${BINARY}" -type f -exec chmod 755 {} \;
-            find "${DIR}" -name 'chrome_sandbox' -type f -exec chmod 4755 {} \; 2>/dev/null || true
-            touch "${DIR}/INSTALLATION_COMPLETE"
-            echo "${NAME} installed: $(ls ${DIR}/)"
-          }
-
-          install_browser "chromium" "chrome" \
-            "chromium/${CHROMIUM_REV}/chromium-linux.zip"
-          install_browser "chromium_headless_shell" "headless_shell" \
-            "chromium/${CHROMIUM_REV}/chromium-headless-shell-linux.zip"
-
-          # ffmpeg is required for video recording (video: retain-on-failure in playwright.config.js)
-          # The custom install_browser uses CHROMIUM_REV which doesn't match ffmpeg's own revision,
-          # so use the local playwright binary (pinned via package-lock.json) to install ffmpeg only.
-          ./node_modules/.bin/playwright install ffmpeg
-
-          # Get list of files to run using join function
-          FILE_LIST="${{ join(matrix.run_files, ' ') }}"
-          echo "DEBUG: FILE_LIST = $FILE_LIST"
-          echo "DEBUG: matrix.testfolder = ${{ matrix.testfolder }}"
-
-          if [ -n "$FILE_LIST" ]; then
-            # actual_folder (the real directory under playwright-tests/) comes straight
-            # from the matrix now — the logical->directory mapping lives in ci-matrix/ci_matrix.json.
-            ACTUAL_FOLDER="${{ matrix.actual_folder }}"
-            echo "DEBUG: ACTUAL_FOLDER = $ACTUAL_FOLDER"
-
-            # Build file paths
-            FILE_PATHS=""
-            for file in $FILE_LIST; do
-              FILE_PATH="./playwright-tests/$ACTUAL_FOLDER/$file"
-              echo "DEBUG: Will run file: $FILE_PATH"
-              FILE_PATHS="$FILE_PATHS $FILE_PATH"
+      - name: Run UI tests on Endform
+        env:
+          ENDFORM_TEST_CONCURRENCY: "40"
+          ENDFORM_SELECTION_JSON: ${{ needs.generate_matrix.outputs.matrix }}
+        run: |
+          npx endform@latest --version
+          (
+            while true; do
+              date -u +%FT%TZ
+              ps -p "$(cat openobserve.pid)" -o pid=,pcpu=,rss= || true
+              sleep 5
             done
-
-            # Optional per-shard worker pin. Empty keeps playwright.config.js's
-            # default; a shard whose specs contend for a shared server-side
-            # resource sets "workers": 1 in ci_matrix.json, because fullyParallel
-            # races separate spec FILES and mode:'serial' only orders tests
-            # within one file.
-            WORKERS_ARG=""
-            if [ -n "${{ matrix.workers }}" ]; then
-              WORKERS_ARG="--workers=${{ matrix.workers }}"
-              echo "DEBUG: pinning workers to ${{ matrix.workers }}"
-            fi
-
-            echo "DEBUG: Final command: npx playwright test $FILE_PATHS $WORKERS_ARG"
-            npx playwright test $FILE_PATHS $WORKERS_ARG
-          else
-            echo "No files specified to run for ${{ matrix.testfolder }} folder"
-          fi
+          ) > backend-resource.log &
+          monitor_pid=$!
+          trap 'kill "$monitor_pid" 2>/dev/null || true' EXIT
+          node scripts/run-endform-suite.cjs
 
       - name: Upload blob report to GitHub Actions Artifacts
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: blob-report-${{ matrix.testfolder }}-attempt-${{ github.run_attempt }}
-          path: tests/ui-testing/blob-report
+          name: blob-report-full-attempt-${{ github.run_attempt }}
+          path: tests/ui-testing/endform-blob-reports
+          retention-days: 1
+
+      - name: Upload backend resource samples
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: endform-backend-resources-attempt-${{ github.run_attempt }}
+          path: backend-resource.log
           retention-days: 1
 
       - name: Check OpenObserve logs
         if: always()
-        run: cat o2.log
+        run: |
+          cat o2.log
+          if [ -f o2-quick.log ]; then cat o2-quick.log; fi
+
+      - name: Stop OpenObserve
+        if: always()
+        run: |
+          if [ -f openobserve.pid ]; then kill "$(cat openobserve.pid)" || true; fi
 
   merge_reports:
     timeout-minutes: 20

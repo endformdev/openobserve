@@ -3,7 +3,7 @@
  * Provides common methods for variable API monitoring, assertions, and state validation
  */
 
-import testLogger from './test-logger.js';
+const testLogger = require('./test-logger.js');
 
 /**
  * Monitor variable values API calls and track completion
@@ -13,7 +13,7 @@ import testLogger from './test-logger.js';
  * @param {number} options.timeout - Timeout in milliseconds (default: 15000)
  * @returns {Promise<Object>} - {success, actualCount, calls, timedOut}
  */
-export async function monitorVariableAPICalls(page, options = {}) {
+async function monitorVariableAPICalls(page, options = {}) {
   const { expectedCount = 1, timeout = 15000, matchFn = null } = options;
   const startTime = Date.now();
   const apiCalls = [];
@@ -180,7 +180,7 @@ export async function monitorVariableAPICalls(page, options = {}) {
  * @param {Object} options - Configuration options
  * @returns {Promise<Object>} - {success, state, error}
  */
-export async function waitForVariableToLoad(page, variableName, options = {}) {
+async function waitForVariableToLoad(page, variableName, options = {}) {
   const { timeout = 10000 } = options;
 
   try {
@@ -221,7 +221,7 @@ export async function waitForVariableToLoad(page, variableName, options = {}) {
  * @param {Object} options - Configuration options
  * @returns {Promise<boolean>}
  */
-export async function verifyVariableAPITriggered(page, action, options = {}) {
+async function verifyVariableAPITriggered(page, action, options = {}) {
   const { timeout = 10000 } = options;
   let apiCalled = false;
 
@@ -251,7 +251,7 @@ export async function verifyVariableAPITriggered(page, action, options = {}) {
  * @param {string} level - 'global' or panel ID
  * @returns {Promise<boolean>}
  */
-export async function hasRefreshIndicator(page, level = 'global') {
+async function hasRefreshIndicator(page, level = 'global') {
   try {
     if (level === 'global') {
       const refreshBtn = page.locator('[data-test="dashboard-refresh-btn"]');
@@ -275,7 +275,7 @@ export async function hasRefreshIndicator(page, level = 'global') {
  * @param {string} panelId - Panel ID
  * @returns {Promise<boolean>}
  */
-export async function panelNeedsRefresh(page, panelId) {
+async function panelNeedsRefresh(page, panelId) {
   try {
     const warningIcon = page.locator(`[data-test="dashboard-panel-refresh-panel-btn"]`);
     return await warningIcon.isVisible({ timeout: 3000 });
@@ -292,7 +292,7 @@ export async function panelNeedsRefresh(page, panelId) {
  * @param {number} timeout - Timeout in milliseconds
  * @returns {Promise<Object>} - {reloaded, queryCount}
  */
-export async function trackPanelReload(page, panelId, action, timeout = 10000) {
+async function trackPanelReload(page, panelId, action, timeout = 10000) {
   const queryCalls = [];
   const startTime = Date.now();
 
@@ -341,7 +341,7 @@ function extractPanelIdFromURL(url) {
  * @param {string} expectedValue - Expected value
  * @returns {Promise<boolean>}
  */
-export async function verifyVariableValuePersists(page, variableName, tabId, expectedValue) {
+async function verifyVariableValuePersists(page, variableName, tabId, expectedValue) {
   try {
     // Switch to the tab
     await page.locator(`[data-test="dashboard-tab-${tabId}"]`).click();
@@ -367,7 +367,7 @@ export async function verifyVariableValuePersists(page, variableName, tabId, exp
  * @param {number} timeout - Timeout in milliseconds
  * @returns {Promise<Object>} - {success, loadOrder, errors}
  */
-export async function verifyVariableLoadSequence(page, variableNames, timeout = 20000) {
+async function verifyVariableLoadSequence(page, variableNames, timeout = 20000) {
   const loadOrder = [];
   const errors = [];
   const startTime = Date.now();
@@ -429,7 +429,7 @@ function extractVariableNameFromURL(url) {
  * @param {string} scopeId - Tab or panel ID (if applicable)
  * @returns {Promise<boolean>}
  */
-export async function verifyVariablesInURL(page, expectedVariables, scope = 'global', scopeId = null) {
+async function verifyVariablesInURL(page, expectedVariables, scope = 'global', scopeId = null) {
   const currentURL = page.url();
 
   for (const [name, value] of Object.entries(expectedVariables)) {
@@ -460,7 +460,7 @@ export async function verifyVariablesInURL(page, expectedVariables, scope = 'glo
  * @param {number} timeout - Timeout in milliseconds
  * @returns {Promise<boolean>}
  */
-export async function waitForAllPanelsToLoad(page, panelCount, timeout = 30000) {
+async function waitForAllPanelsToLoad(page, panelCount, timeout = 30000) {
   const startTime = Date.now();
 
   try {
@@ -487,7 +487,7 @@ export async function waitForAllPanelsToLoad(page, panelCount, timeout = 30000) 
  * @param {Object} expectations - {success: true, minCalls: 1, maxDuration: 10000}
  * @throws {Error} if expectations are not met
  */
-export function assertVariableAPILoading(monitorResult, expectations = {}) {
+function assertVariableAPILoading(monitorResult, expectations = {}) {
   const {
     success = true,
     minCalls = 1,
@@ -513,3 +513,15 @@ export function assertVariableAPILoading(monitorResult, expectations = {}) {
 
   testLogger.info(`Variable API assertion passed: ${monitorResult.actualCount} calls in ${monitorResult.totalDuration}ms`);
 }
+
+exports.monitorVariableAPICalls = monitorVariableAPICalls;
+exports.waitForVariableToLoad = waitForVariableToLoad;
+exports.verifyVariableAPITriggered = verifyVariableAPITriggered;
+exports.hasRefreshIndicator = hasRefreshIndicator;
+exports.panelNeedsRefresh = panelNeedsRefresh;
+exports.trackPanelReload = trackPanelReload;
+exports.verifyVariableValuePersists = verifyVariableValuePersists;
+exports.verifyVariableLoadSequence = verifyVariableLoadSequence;
+exports.verifyVariablesInURL = verifyVariablesInURL;
+exports.waitForAllPanelsToLoad = waitForAllPanelsToLoad;
+exports.assertVariableAPILoading = assertVariableAPILoading;

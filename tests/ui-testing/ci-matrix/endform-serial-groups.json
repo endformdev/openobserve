@@ -1,0 +1,320 @@
+{
+  "Alerts/alerts-history.spec.js": [
+    [
+      "Alert History Page"
+    ]
+  ],
+  "Alerts/alerts-metrics-notification.spec.js": [
+    [
+      "Metrics Alert Notification Chain"
+    ]
+  ],
+  "Alerts/dl-email-destinations.spec.js": [
+    [
+      "Email destinations and distribution lists",
+      "delivery"
+    ]
+  ],
+  "Dashboards/crossLinkMultiStream.spec.js": [
+    [
+      "Cross-Linking Multi-Stream testcases"
+    ]
+  ],
+  "Dashboards/dashboard-favorites.spec.js": [
+    []
+  ],
+  "Dashboards/dashboard-legends-copy.spec.js": [
+    [
+      "Dashboard Copy Legends and Table Cells"
+    ]
+  ],
+  "Dashboards/dashboard-multi-sql.spec.js": [
+    [
+      "Multi-SQL Query Support",
+      "Reset Query on Chart Type Change"
+    ]
+  ],
+  "Dashboards/dashboard-raw-query.spec.js": [
+    [
+      "Dashboard Raw Query testcases"
+    ]
+  ],
+  "Dashboards/dashboard-sql-autocomplete.spec.js": [
+    [
+      "Dashboard SQL Autocomplete"
+    ]
+  ],
+  "Dashboards/dashboard-streaming.spec.js": [
+    []
+  ],
+  "Dashboards/dashboard-table-csv-download.spec.js": [
+    [
+      "Dashboard Table Chart — CSV Download"
+    ],
+    [
+      "Dashboard PromQL Table Chart — CSV Download"
+    ]
+  ],
+  "Dashboards/maxquery.spec.js": [
+    []
+  ],
+  "Functions/functions-form-validation.spec.js": [
+    [
+      "Functions Form Validation"
+    ],
+    [
+      "Functions Form Validation",
+      "AddFunction form validation"
+    ],
+    [
+      "Functions Form Validation",
+      "FunctionsToolbar transform type selection"
+    ],
+    [
+      "Functions Form Validation",
+      "StreamRouting form validation"
+    ],
+    [
+      "Functions Form Validation",
+      "AddEnrichmentTable form validation"
+    ]
+  ],
+  "GeneralTests/ai-toolsets-form-validation.spec.js": [
+    [
+      "AI Toolsets form validation"
+    ],
+    [
+      "CrossLink dialog form validation"
+    ]
+  ],
+  "GeneralTests/landingPage.spec.js": [
+    [
+      "Landing Page Test Cases"
+    ]
+  ],
+  "GeneralTests/login-form-validation.spec.js": [
+    [
+      "Login form validation"
+    ]
+  ],
+  "GeneralTests/otableSelectCell.spec.js": [
+    [
+      "OTable Select Cell Click Selection testcases"
+    ]
+  ],
+  "GeneralTests/shared-components-form-validation.spec.js": [
+    [
+      "AddToDashboard form validation"
+    ],
+    [
+      "TimeRangeEditor form validation"
+    ],
+    [
+      "TimeRangeEditor Logs Correlation form validation"
+    ]
+  ],
+  "Logs/logs-autocomplete-suggestions.spec.js": [
+    [
+      "Autocomplete Value Suggestions"
+    ],
+    [
+      "Autocomplete Value Suggestions - Edge Cases"
+    ],
+    [
+      "Autocomplete Value Suggestions - Quoting Behavior"
+    ],
+    [
+      "Autocomplete Value Suggestions - Cold Start & TTL"
+    ]
+  ],
+  "Logs/logs-sql-autocomplete.spec.js": [
+    [
+      "SQL Autocomplete — Logs"
+    ],
+    [
+      "SQL Autocomplete — Dashboard"
+    ],
+    [
+      "SQL Autocomplete — Traces"
+    ]
+  ],
+  "Logs/monaco-query-prefill.spec.js": [
+    [
+      "Monaco Editor Query Pre-fill Tests"
+    ]
+  ],
+  "Logs/unflattened.spec.js": [
+    []
+  ],
+  "Management/cipher-keys-form-validation.spec.js": [
+    [
+      "Cipher Keys — AddCipherKey empty form validation"
+    ],
+    [
+      "Cipher Keys — Akeyless credential errors"
+    ],
+    [
+      "Cipher Keys — AddAkeylessType URL format validation"
+    ],
+    [
+      "Cipher Keys — AddEncryptionMechanism form validation"
+    ],
+    [
+      "Cipher Keys — valid OpenObserve key creation"
+    ]
+  ],
+  "Management/edition-features.spec.js": [
+    []
+  ],
+  "Management/iam-form-validation.spec.js": [
+    [
+      "IAM Group form validation"
+    ],
+    [
+      "IAM Role form validation"
+    ],
+    [
+      "IAM Service Account name format validation"
+    ],
+    [
+      "IAM Add User form validation"
+    ],
+    [
+      "IAM UpdateRole form validation"
+    ]
+  ],
+  "Management/onboarding-form-validation.spec.js": [
+    [
+      "Onboarding GetStarted form validation"
+    ],
+    [
+      "AWS Marketplace Setup form validation"
+    ],
+    [
+      "Azure Marketplace Setup form validation"
+    ]
+  ],
+  "Management/settings-form-validation.spec.js": [
+    [
+      "Settings OrganizationSettings form validation"
+    ],
+    [
+      "Settings OrgStorageEditor form validation"
+    ],
+    [
+      "Settings DomainManagement form validation"
+    ],
+    [
+      "Settings ModelPricingEditor form validation"
+    ],
+    [
+      "Correlation Settings SemanticGroupItem display name validation"
+    ]
+  ],
+  "Management/theme.spec.js": [
+    [
+      "Theme Management Tests"
+    ]
+  ],
+  "Pipelines/scheduled-pipeline-query-builder.spec.js": [
+    []
+  ],
+  "RUM/rum-cdn-dataflow.spec.js": [
+    [
+      "RUM CDN Data Flow"
+    ]
+  ],
+  "RUM/rum-form-validation.spec.js": [
+    [
+      "RUM Source Maps upload form validation"
+    ]
+  ],
+  "RUM/rum-npm-dataflow.spec.js": [
+    [
+      "RUM NPM Data Flow"
+    ]
+  ],
+  "RUM/rum-page-dataflow.spec.js": [
+    [
+      "RUM Page Data Flow"
+    ]
+  ],
+  "RUM/sourcemap-upload-pretty.spec.js": [
+    [
+      "Sourcemap Upload & Pretty Stack Trace"
+    ]
+  ],
+  "Reports/reportFolders.spec.js": [
+    [
+      "Report Folders"
+    ]
+  ],
+  "Reports/reports-bulk-operations.spec.js": [
+    [
+      "Report Bulk Operations"
+    ]
+  ],
+  "Reports/reports-form-validation.spec.js": [
+    [
+      "Reports form validation — required field errors"
+    ],
+    [
+      "Reports form validation — absolute timerange with no range blocks save"
+    ],
+    [
+      "Reports form validation — valid config creates report"
+    ]
+  ],
+  "Reports/scheduledReportsDrawer.spec.js": [
+    [
+      "Dashboard Scheduled Reports Drawer"
+    ]
+  ],
+  "SLO/slo-alert-sli.spec.js": [
+    []
+  ],
+  "SLO/slo-alerts.spec.js": [
+    []
+  ],
+  "SLO/slo-timeslice.spec.js": [
+    []
+  ],
+  "Streams/streams-form-validation.spec.js": [
+    [
+      "Streams Add Stream form validation"
+    ],
+    [
+      "Streams StreamFieldInputs form validation"
+    ]
+  ],
+  "Traces/traceAdvancedFiltering.spec.js": [
+    [
+      "Trace Advanced Filtering testcases"
+    ]
+  ],
+  "Traces/traceDetails.spec.js": [
+    [
+      "Trace Details testcases"
+    ]
+  ],
+  "Traces/traceErrorFilter.spec.js": [
+    [
+      "Trace Error Filter testcases"
+    ]
+  ],
+  "Traces/traceQueryEditor.spec.js": [
+    [
+      "Trace Query Editor testcases"
+    ]
+  ],
+  "Traces/traces-autocomplete-suggestions.spec.js": [
+    [
+      "Traces Autocomplete Value Suggestions"
+    ]
+  ],
+  "Traces/tracesSearch.spec.js": [
+    [
+      "Traces Search testcases"
+    ]
+  ]
+}

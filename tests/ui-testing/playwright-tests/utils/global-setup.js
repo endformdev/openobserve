@@ -250,3 +250,4 @@ async function performMetricsIngestion() {
 }
 
 module.exports = globalSetup;
+module.exports.performGlobalIngestion = performGlobalIngestion;

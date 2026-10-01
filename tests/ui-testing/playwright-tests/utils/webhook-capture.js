@@ -22,6 +22,35 @@ class WebhookCapture {
      * @returns {Promise<number>} The port the server is listening on.
      */
     async start() {
+        if (process.env.ENDFORM === 'true') {
+            const { request } = require('@playwright/test');
+            this.remoteContext = await request.newContext({ baseURL: 'http://localhost:9000' });
+            const response = await this.remoteContext.post('/captures');
+            if (!response.ok()) throw new Error(`Callback receiver setup failed: HTTP ${response.status()}`);
+            const capture = await response.json();
+            this.remoteId = capture.id;
+            this.port = capture.port;
+            this.pollGeneration = 0;
+            this.pollError = null;
+            const poll = async () => {
+                const generation = this.pollGeneration;
+                try {
+                    await this.pendingClear;
+                    const response = await this.remoteContext.get(`/captures/${this.remoteId}`);
+                    if (!response.ok()) throw new Error(`Callback receiver polling failed: HTTP ${response.status()}`);
+                    const payloads = await response.json();
+                    if (generation === this.pollGeneration) {
+                        this.payloads = payloads;
+                        this.pollError = null;
+                    }
+                } catch (error) {
+                    if (this.remoteId) this.pollError = error;
+                }
+                if (this.remoteId) this.pollTimer = setTimeout(poll, 100);
+            };
+            this.pollTimer = setTimeout(poll, 100);
+            return this.port;
+        }
         return new Promise((resolve, reject) => {
             this.payloads = [];
             this.server = http.createServer((req, res) => {
@@ -63,6 +92,14 @@ class WebhookCapture {
      * Stop the capture server.
      */
     async stop() {
+        if (this.remoteId) {
+            const id = this.remoteId;
+            this.remoteId = null;
+            clearTimeout(this.pollTimer);
+            await this.remoteContext.delete(`/captures/${id}`);
+            await this.remoteContext.dispose();
+            return;
+        }
         return new Promise((resolve) => {
             if (!this.server) return resolve();
             this.server.close(() => resolve());
@@ -83,6 +120,7 @@ class WebhookCapture {
      * @returns {Object|null}
      */
     getLatestPayload() {
+        if (this.pollError) throw this.pollError;
         if (this.payloads.length === 0) return null;
         return this.payloads[this.payloads.length - 1];
     }
@@ -92,6 +130,10 @@ class WebhookCapture {
      */
     clear() {
         this.payloads = [];
+        if (this.remoteId) {
+            this.pollGeneration += 1;
+            this.pendingClear = this.remoteContext.delete(`/captures/${this.remoteId}/payloads`);
+        }
     }
 }
 
