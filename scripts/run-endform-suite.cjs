@@ -48,7 +48,7 @@ async function main() {
   let failed = false;
   console.log(`TEST_STAGE_STARTED_AT=${new Date().toISOString()}`);
   try {
-    for (const phase of ['main', 'shared', 'quick']) {
+    for (const phase of ['main', 'quick']) {
       process.env.ENDFORM_PHASE = phase;
       const files = selection();
       if (files.length === 0) continue;
@@ -61,7 +61,6 @@ async function main() {
         cwd: root,
         env: {
           ...process.env,
-          SKIP_INGESTION: phase === 'shared' ? 'true' : 'false',
           PLAYWRIGHT_BLOB_OUTPUT_NAME: `report-${phase}.zip`,
         },
         stdio: 'inherit',

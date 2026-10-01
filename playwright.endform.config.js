@@ -6,13 +6,14 @@ const suiteDir = path.join(__dirname, 'tests/ui-testing');
 
 module.exports = {
   ...original,
-  projects: original.projects.flatMap(project => [false, true].map(fileMode => ({
-    ...project,
-    name: `${project.name}-${fileMode ? 'files' : 'tests'}`,
-    fullyParallel: !fileMode,
-    testMatch: selection().filter(file => file.fileMode === fileMode).map(file =>
-      new RegExp(`^${file.filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)),
-  }))),
+  projects: original.projects.flatMap(project =>
+    ['tests', 'files', 'rum', 'slo', 'reports', 'alerts', 'preferences'].map(resource => ({
+      ...project,
+      name: `${project.name}-${resource}`,
+      fullyParallel: resource === 'tests',
+      testMatch: selection().filter(file => file.resource === resource).map(file =>
+        new RegExp(`^${file.filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)),
+    }))),
   testDir: path.resolve(suiteDir, original.testDir),
   outputDir: path.resolve(suiteDir, original.outputDir),
   globalSetup: path.resolve(suiteDir, original.globalSetup),

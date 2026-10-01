@@ -3,7 +3,6 @@ const serialFiles = new Set(require('../tests/ui-testing/ci-matrix/endform-seria
 const manifest = require('../tests/ui-testing/ci-matrix/ci_matrix.json');
 
 const suiteDir = path.resolve(__dirname, '../tests/ui-testing/playwright-tests');
-const sharedGroups = new Set(['RUM-Token', 'SLO', 'SLO-Measurement', 'Dashboards-Isolated']);
 const fileGroups = new Set(['Reports', 'RUM', 'Alerts']);
 
 function selection() {
@@ -14,13 +13,16 @@ function selection() {
   return groups.flatMap(group => {
     const groupPhase = group.quick_mode_enabled === 'true'
       ? 'quick'
-      : sharedGroups.has(group.testfolder) ? 'shared' : 'main';
+      : 'main';
     if (groupPhase !== phase) return [];
     return group.run_files.map(file => {
       const filename = path.resolve(suiteDir, group.actual_folder, file);
-      const fileMode = phase === 'shared' || fileGroups.has(group.testfolder)
+      const fileMode = ['RUM', 'SLO'].includes(group.actual_folder) || fileGroups.has(group.testfolder)
         || serialFiles.has(`${group.actual_folder}/${file}`);
-      return { filename, fileMode, group: group.testfolder };
+      const resource = group.testfolder === 'Dashboards-Isolated' ? 'preferences'
+        : ['RUM', 'SLO', 'Reports', 'Alerts'].includes(group.actual_folder)
+          ? group.actual_folder.toLowerCase() : fileMode ? 'files' : 'tests';
+      return { filename, fileMode, resource, group: group.testfolder };
     });
   });
 }
