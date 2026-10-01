@@ -508,6 +508,7 @@ jobs:
       - name: Run UI tests on Endform
         env:
           ENDFORM_TEST_CONCURRENCY: ${{ matrix.workers || 5 }}
+          PLAYWRIGHT_BLOB_OUTPUT_NAME: report-${{ matrix.testfolder }}.zip
         run: |
           FILE_LIST="${{ join(matrix.run_files, ' ') }}"
           ACTUAL_FOLDER="${{ matrix.actual_folder }}"
