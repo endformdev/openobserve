@@ -36,7 +36,7 @@ async function restartQuickServer() {
   for (let i = 0; i < 120; i++) {
     try {
       const response = await fetch(`${process.env.ZO_BASE_URL}/web/login`);
-      if (response.ok()) return;
+      if (response.ok) return;
     } catch {}
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
