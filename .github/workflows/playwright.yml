@@ -168,7 +168,7 @@ jobs:
           fi
 
   build_binary:
-    timeout-minutes: 45
+    timeout-minutes: 180
     name: build_binary
     needs: [check_changes, resolve_binary]
     if: >-
@@ -177,8 +177,7 @@ jobs:
       needs.check_changes.outputs.has_changes == 'true' &&
       needs.resolve_binary.result == 'success' &&
       needs.resolve_binary.outputs.reuse != 'true'
-    runs-on:
-      labels: ubicloud-standard-16
+    runs-on: ubuntu-latest
     permissions:
       contents: read
 
@@ -189,6 +188,8 @@ jobs:
           sudo rm -rf /opt/ghc
           sudo rm -rf "/usr/local/share/boost"
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo rm -rf /usr/local/lib/android /opt/hostedtoolcache/CodeQL
+          df -h .
 
       - name: Clone the current repo
         uses: actions/checkout@v5
@@ -234,12 +235,15 @@ jobs:
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
           GIT_HASH_OVERRIDE: ${{ github.sha }}
+          CARGO_PROFILE_DEV_DEBUG: "0"
+          CARGO_INCREMENTAL: "0"
+          CARGO_BUILD_JOBS: "2"
         run: |
           mkdir -p /tmp/dist
           bash -c "cd web && npm run build && cp -r ./dist/. /tmp/dist/" &
           NPM_PID=$!
           sed -i 's|folder = "../../web/dist/"|folder = "/tmp/dist/"|' src/web/src/lib.rs && grep -q 'folder = "/tmp/dist/"' src/web/src/lib.rs
-          cargo build --profile release-ci --target x86_64-unknown-linux-gnu
+          cargo build --target x86_64-unknown-linux-gnu
           wait $NPM_PID
           test -f /tmp/dist/index.html
 
@@ -247,7 +251,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-ci-binary-${{ github.sha }}
-          path: target/x86_64-unknown-linux-gnu/release-ci/openobserve
+          path: target/x86_64-unknown-linux-gnu/debug/openobserve
           retention-days: 1
 
       - name: Upload frontend artifact
@@ -355,8 +359,7 @@ jobs:
       needs.resolve_binary.result == 'success' &&
       needs.generate_matrix.result == 'success' &&
       (needs.resolve_binary.outputs.reuse == 'true' || needs.build_binary.result == 'success')
-    runs-on:
-      labels: eks-openobserve-standard-8
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       actions: read
@@ -632,8 +635,7 @@ jobs:
     # output) on the ubicloud and github-hosted runners — but works on the eks runners (same as ENT).
     # This job also uploads the merged run to the self-hosted Kinora dashboard (see the last two
     # steps) — folded in here to reuse the merge instead of re-downloading/re-merging in a 2nd job.
-    runs-on:
-      labels: eks-openobserve-standard-4
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       actions: read          # the no-blobs investigation reads run/job state from the Actions API
@@ -794,7 +796,7 @@ jobs:
       # runner), so there is NO second artifact download or merge. Fully non-fatal.
       - name: Report to Kinora (upload merged run + traces)
         id: kinora
-        if: ${{ vars.UPLOAD_TO_KINORA != 'false' }}
+        if: ${{ vars.UPLOAD_TO_KINORA != 'false' && (github.repository == 'openobserve/openobserve' || vars.UPLOAD_TO_KINORA == 'true') }}
         continue-on-error: true
         env:
           KINORA_TOKEN: ${{ secrets.KINORA_TOKEN }}
@@ -858,8 +860,7 @@ jobs:
     name: Report to OpenObserve
     needs: [generate_matrix, ui_integration_tests, merge_reports]
     if: ${{ !cancelled() && needs.ui_integration_tests.result != 'skipped' }}
-    runs-on:
-      labels: eks-openobserve-standard-4
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       actions: read  # reads run/job timings from the Actions API
@@ -924,8 +925,7 @@ jobs:
 
   playwright_summary:
     timeout-minutes: 5
-    runs-on:
-      labels: eks-openobserve-standard-4
+    runs-on: ubuntu-latest
     permissions: {}
     needs:
       [
